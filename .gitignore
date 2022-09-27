@@ -3,10 +3,11 @@
 
 .packages
 .pub/
-pubspec.lock
 
 build/
 
 # IntelliJ
 *.iml
 .idea/
+
+/pubspec.lock

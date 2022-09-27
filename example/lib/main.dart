@@ -2,22 +2,24 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-
 import 'package:tflite/tflite.dart';
 import 'package:image_picker/image_picker.dart';
 
-void main() => runApp(new App());
+void main() => runApp(App());
 
-const String mobile = "MobileNet";
-const String ssd = "SSD MobileNet";
-const String yolo = "Tiny YOLOv2";
-const String deeplab = "DeepLab";
-const String posenet = "PoseNet";
+const String mobile = 'MobileNet';
+const String ssd = 'SSD MobileNet';
+const String yolo = 'Tiny YOLOv2';
+const String deeplab = 'DeepLab';
+const String posenet = 'PoseNet';
 
 class App extends StatelessWidget {
+  const App({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -27,22 +29,26 @@ class App extends StatelessWidget {
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
-  _MyAppState createState() => new _MyAppState();
+  State<StatefulWidget> createState() {
+    return _MyAppState();
+  }
 }
 
 final ImagePicker _imagePicker = ImagePicker();
 
 class _MyAppState extends State<MyApp> {
-  File _image;
-  List _recognitions;
+  File? _image;
+  dynamic _recognitions;
   String _model = mobile;
-  double _imageHeight;
-  double _imageWidth;
+  double? _imageHeight;
+  double? _imageWidth;
   bool _busy = false;
 
-  Future predictImagePicker() async {
-    var image = await _imagePicker.pickImage(source: ImageSource.gallery);
+  Future<void> predictImagePicker() async {
+    final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
     setState(() {
       _busy = true;
@@ -50,9 +56,10 @@ class _MyAppState extends State<MyApp> {
     predictImage(File(image.path));
   }
 
-  Future predictImage(File image) async {
-    if (image == null) return;
-
+  Future<void> predictImage(File? image) async {
+    if (image == null) {
+      return;
+    }
     switch (_model) {
       case yolo:
         await yolov2Tiny(image);
@@ -68,15 +75,16 @@ class _MyAppState extends State<MyApp> {
         break;
       default:
         await recognizeImage(image);
-      // await recognizeImageBinary(image);
+        // await recognizeImageBinary(image);
+        break;
     }
 
-    new FileImage(image)
-        .resolve(new ImageConfiguration())
-        .addListener(ImageStreamListener((ImageInfo info, bool _) {
+    FileImage(image)
+        .resolve(ImageConfiguration())
+        .addListener(ImageStreamListener((ImageInfo image, bool synchronousCall) {
       setState(() {
-        _imageHeight = info.image.height.toDouble();
-        _imageWidth = info.image.width.toDouble();
+        _imageHeight = image.image.height.toDouble();
+        _imageWidth = image.image.width.toDouble();
       });
     }));
 
@@ -102,39 +110,39 @@ class _MyAppState extends State<MyApp> {
   Future loadModel() async {
     Tflite.close();
     try {
-      String res;
+      String? res;
       switch (_model) {
         case yolo:
           res = await Tflite.loadModel(
-            model: "assets/yolov2_tiny.tflite",
-            labels: "assets/yolov2_tiny.txt",
+            model: 'assets/yolov2_tiny.tflite',
+            labels: 'assets/yolov2_tiny.txt',
             // useGpuDelegate: true,
           );
           break;
         case ssd:
           res = await Tflite.loadModel(
-            model: "assets/ssd_mobilenet.tflite",
-            labels: "assets/ssd_mobilenet.txt",
+            model: 'assets/ssd_mobilenet.tflite',
+            labels: 'assets/ssd_mobilenet.txt',
             // useGpuDelegate: true,
           );
           break;
         case deeplab:
           res = await Tflite.loadModel(
-            model: "assets/deeplabv3_257_mv_gpu.tflite",
-            labels: "assets/deeplabv3_257_mv_gpu.txt",
+            model: 'assets/deeplabv3_257_mv_gpu.tflite',
+            labels: 'assets/deeplabv3_257_mv_gpu.txt',
             // useGpuDelegate: true,
           );
           break;
         case posenet:
           res = await Tflite.loadModel(
-            model: "assets/posenet_mv1_075_float_from_checkpoints.tflite",
+            model: 'assets/posenet_mv1_075_float_from_checkpoints.tflite',
             // useGpuDelegate: true,
           );
           break;
         default:
           res = await Tflite.loadModel(
-            model: "assets/mobilenet_v1_1.0_224.tflite",
-            labels: "assets/mobilenet_v1_1.0_224.txt",
+            model: 'assets/mobilenet_v1_1.0_224.tflite',
+            labels: 'assets/mobilenet_v1_1.0_224.txt',
             // useGpuDelegate: true,
           );
       }
@@ -144,13 +152,12 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Uint8List imageToByteListFloat32(
-      img.Image image, int inputSize, double mean, double std) {
-    var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-    var buffer = Float32List.view(convertedBytes.buffer);
+  Uint8List imageToByteListFloat32(img.Image image, int inputSize, double mean, double std) {
+    final Float32List convertedBytes = Float32List(1 * inputSize * inputSize * 3);
+    final Float32List buffer = Float32List.view(convertedBytes.buffer);
     int pixelIndex = 0;
-    for (var i = 0; i < inputSize; i++) {
-      for (var j = 0; j < inputSize; j++) {
+    for (int i = 0; i < inputSize; i++) {
+      for (int j = 0; j < inputSize; j++) {
         var pixel = image.getPixel(j, i);
         buffer[pixelIndex++] = (img.getRed(pixel) - mean) / std;
         buffer[pixelIndex++] = (img.getGreen(pixel) - mean) / std;
@@ -161,11 +168,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   Uint8List imageToByteListUint8(img.Image image, int inputSize) {
-    var convertedBytes = Uint8List(1 * inputSize * inputSize * 3);
-    var buffer = Uint8List.view(convertedBytes.buffer);
+    final Uint8List convertedBytes = Uint8List(1 * inputSize * inputSize * 3);
+    final Uint8List buffer = Uint8List.view(convertedBytes.buffer);
     int pixelIndex = 0;
-    for (var i = 0; i < inputSize; i++) {
-      for (var j = 0; j < inputSize; j++) {
+    for (int i = 0; i < inputSize; i++) {
+      for (int j = 0; j < inputSize; j++) {
         var pixel = image.getPixel(j, i);
         buffer[pixelIndex++] = img.getRed(pixel);
         buffer[pixelIndex++] = img.getGreen(pixel);
@@ -175,9 +182,9 @@ class _MyAppState extends State<MyApp> {
     return convertedBytes.buffer.asUint8List();
   }
 
-  Future recognizeImage(File image) async {
-    int startTime = new DateTime.now().millisecondsSinceEpoch;
-    var recognitions = await Tflite.runModelOnImage(
+  Future<void> recognizeImage(File image) async {
+    final int startTime = DateTime.now().millisecondsSinceEpoch;
+    final List<Map<dynamic, dynamic>>? recognitions = await Tflite.runModelOnImage(
       path: image.path,
       numResults: 6,
       threshold: 0.05,
@@ -187,16 +194,16 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _recognitions = recognitions;
     });
-    int endTime = new DateTime.now().millisecondsSinceEpoch;
-    print("Inference took ${endTime - startTime}ms");
+    int endTime = DateTime.now().millisecondsSinceEpoch;
+    print('Inference took ${endTime - startTime}ms');
   }
 
-  Future recognizeImageBinary(File image) async {
-    int startTime = new DateTime.now().millisecondsSinceEpoch;
-    var imageBytes = (await rootBundle.load(image.path)).buffer;
-    img.Image oriImage = img.decodeJpg(imageBytes.asUint8List());
-    img.Image resizedImage = img.copyResize(oriImage, height: 224, width: 224);
-    var recognitions = await Tflite.runModelOnBinary(
+  Future<void> recognizeImageBinary(File image) async {
+    final int startTime = DateTime.now().millisecondsSinceEpoch;
+    final ByteBuffer imageBytes = (await rootBundle.load(image.path)).buffer;
+    final img.Image? oriImage = img.decodeJpg(imageBytes.asUint8List());
+    final img.Image resizedImage = img.copyResize(oriImage!, height: 224, width: 224);
+    final List<Map<dynamic, dynamic>>? recognitions = await Tflite.runModelOnBinary(
       binary: imageToByteListFloat32(resizedImage, 224, 127.5, 127.5),
       numResults: 6,
       threshold: 0.05,
@@ -204,15 +211,15 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _recognitions = recognitions;
     });
-    int endTime = new DateTime.now().millisecondsSinceEpoch;
-    print("Inference took ${endTime - startTime}ms");
+    final int endTime = DateTime.now().millisecondsSinceEpoch;
+    print('Inference took ${endTime - startTime}ms');
   }
 
-  Future yolov2Tiny(File image) async {
-    int startTime = new DateTime.now().millisecondsSinceEpoch;
-    var recognitions = await Tflite.detectObjectOnImage(
+  Future<void> yolov2Tiny(File image) async {
+    final int startTime = DateTime.now().millisecondsSinceEpoch;
+    final List<Map<dynamic, dynamic>>? recognitions = await Tflite.detectObjectOnImage(
       path: image.path,
-      model: "YOLO",
+      model: 'YOLO',
       threshold: 0.3,
       imageMean: 0.0,
       imageStd: 255.0,
@@ -230,13 +237,13 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _recognitions = recognitions;
     });
-    int endTime = new DateTime.now().millisecondsSinceEpoch;
-    print("Inference took ${endTime - startTime}ms");
+    final int endTime = DateTime.now().millisecondsSinceEpoch;
+    print('Inference took ${endTime - startTime}ms');
   }
 
-  Future ssdMobileNet(File image) async {
-    int startTime = new DateTime.now().millisecondsSinceEpoch;
-    var recognitions = await Tflite.detectObjectOnImage(
+  Future<void> ssdMobileNet(File image) async {
+    final int startTime = DateTime.now().millisecondsSinceEpoch;
+    final List<Map<dynamic, dynamic>>? recognitions = await Tflite.detectObjectOnImage(
       path: image.path,
       numResultsPerClass: 1,
     );
@@ -250,13 +257,13 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _recognitions = recognitions;
     });
-    int endTime = new DateTime.now().millisecondsSinceEpoch;
-    print("Inference took ${endTime - startTime}ms");
+    final int endTime = DateTime.now().millisecondsSinceEpoch;
+    print('Inference took ${endTime - startTime}ms');
   }
 
-  Future segmentMobileNet(File image) async {
-    int startTime = new DateTime.now().millisecondsSinceEpoch;
-    var recognitions = await Tflite.runSegmentationOnImage(
+  Future<void> segmentMobileNet(File image) async {
+    final int startTime = DateTime.now().millisecondsSinceEpoch;
+    final Uint8List? recognitions = await Tflite.runSegmentationOnImage(
       path: image.path,
       imageMean: 127.5,
       imageStd: 127.5,
@@ -265,13 +272,13 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _recognitions = recognitions;
     });
-    int endTime = new DateTime.now().millisecondsSinceEpoch;
-    print("Inference took ${endTime - startTime}");
+    final int endTime = DateTime.now().millisecondsSinceEpoch;
+    print('Inference took ${endTime - startTime}');
   }
 
-  Future poseNet(File image) async {
-    int startTime = new DateTime.now().millisecondsSinceEpoch;
-    var recognitions = await Tflite.runPoseNetOnImage(
+  Future<void> poseNet(File image) async {
+    final int startTime = DateTime.now().millisecondsSinceEpoch;
+    final List<Map<dynamic, dynamic>>? recognitions = await Tflite.runPoseNetOnImage(
       path: image.path,
       numResults: 2,
     );
@@ -281,11 +288,11 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _recognitions = recognitions;
     });
-    int endTime = new DateTime.now().millisecondsSinceEpoch;
-    print("Inference took ${endTime - startTime}ms");
+    final int endTime = DateTime.now().millisecondsSinceEpoch;
+    print('Inference took ${endTime - startTime}ms');
   }
 
-  onSelect(model) async {
+  Future<void> onSelect(model) async {
     setState(() {
       _busy = true;
       _model = model;
@@ -293,27 +300,28 @@ class _MyAppState extends State<MyApp> {
     });
     await loadModel();
 
-    if (_image != null)
+    if (_image != null) {
       predictImage(_image);
-    else
+    } else {
       setState(() {
         _busy = false;
       });
+    }
   }
 
   List<Widget> renderBoxes(Size screen) {
     if (_recognitions == null) return [];
     if (_imageHeight == null || _imageWidth == null) return [];
 
-    double factorX = screen.width;
-    double factorY = _imageHeight / _imageWidth * screen.width;
-    Color blue = Color.fromRGBO(37, 213, 253, 1.0);
-    return _recognitions.map((re) {
+    final double factorX = screen.width;
+    final double factorY = _imageHeight! / _imageWidth! * screen.width;
+    final Color blue = Color.fromRGBO(37, 213, 253, 1.0);
+    return (_recognitions as List<Map<dynamic, dynamic>>).map((re) {
       return Positioned(
-        left: re["rect"]["x"] * factorX,
-        top: re["rect"]["y"] * factorY,
-        width: re["rect"]["w"] * factorX,
-        height: re["rect"]["h"] * factorY,
+        left: re['rect']['x'] * factorX,
+        top: re['rect']['y'] * factorY,
+        width: re['rect']['w'] * factorX,
+        height: re['rect']['h'] * factorY,
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.all(Radius.circular(8.0)),
@@ -339,17 +347,17 @@ class _MyAppState extends State<MyApp> {
     if (_recognitions == null) return [];
     if (_imageHeight == null || _imageWidth == null) return [];
 
-    double factorX = screen.width;
-    double factorY = _imageHeight / _imageWidth * screen.width;
+    final double factorX = screen.width;
+    final double factorY = _imageHeight! / _imageWidth! * screen.width;
 
-    var lists = <Widget>[];
-    _recognitions.forEach((re) {
-      var color = Color((Random().nextDouble() * 0xFFFFFF).toInt() << 0)
+    final List<Widget> lists = <Widget>[];
+    (_recognitions as List<Map<dynamic, dynamic>>).forEach((re) {
+      final Color color = Color((Random().nextDouble() * 0xFFFFFF).toInt() << 0)
           .withOpacity(1.0);
-      var list = re["keypoints"].values.map<Widget>((k) {
+      final List<Widget> list = re['keypoints'].values.map<Widget>((k) {
         return Positioned(
-          left: k["x"] * factorX - 6,
-          top: k["y"] * factorY - 6,
+          left: k['x'] * factorX - 6,
+          top: k['y'] * factorY - 6,
           width: 100,
           height: 12,
           child: Text(
@@ -362,7 +370,7 @@ class _MyAppState extends State<MyApp> {
         );
       }).toList();
 
-      lists..addAll(list);
+      lists.addAll(list);
     });
 
     return lists;
@@ -370,8 +378,8 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    List<Widget> stackChildren = [];
+    final Size size = MediaQuery.of(context).size;
+    final List<Widget> stackChildren = <Widget>[];
 
     if (_model == deeplab && _recognitions != null) {
       stackChildren.add(Positioned(
@@ -384,24 +392,23 @@ class _MyAppState extends State<MyApp> {
                 decoration: BoxDecoration(
                     image: DecorationImage(
                         alignment: Alignment.topCenter,
-                        image: MemoryImage(_recognitions),
+                        image: MemoryImage(_recognitions as Uint8List),
                         fit: BoxFit.fill)),
-                child: Opacity(opacity: 0.3, child: Image.file(_image))),
+                child: Opacity(opacity: 0.3, child: Image.file(_image!))),
       ));
     } else {
       stackChildren.add(Positioned(
         top: 0.0,
         left: 0.0,
         width: size.width,
-        child: _image == null ? Text('No image selected.') : Image.file(_image),
+        child: _image == null ? Text('No image selected.') : Image.file(_image!),
       ));
     }
 
     if (_model == mobile) {
       stackChildren.add(Center(
         child: Column(
-          children: _recognitions != null
-              ? _recognitions.map((res) {
+          children: (_recognitions as List<Map<dynamic, dynamic>>).map((res) {
                   return Text(
                     "${res["index"]} - ${res["label"]}: ${res["confidence"].toStringAsFixed(3)}",
                     style: TextStyle(
@@ -410,8 +417,7 @@ class _MyAppState extends State<MyApp> {
                       background: Paint()..color = Colors.white,
                     ),
                   );
-                }).toList()
-              : [],
+                }).toList(),
         ),
       ));
     } else if (_model == ssd || _model == yolo) {
@@ -421,40 +427,40 @@ class _MyAppState extends State<MyApp> {
     }
 
     if (_busy) {
-      stackChildren.add(const Opacity(
-        child: ModalBarrier(dismissible: false, color: Colors.grey),
+      stackChildren.add(Opacity(
         opacity: 0.3,
+        child: ModalBarrier(dismissible: false, color: Colors.grey),
       ));
-      stackChildren.add(const Center(child: CircularProgressIndicator()));
+      stackChildren.add(Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('tflite example app'),
+        title: Text('tflite example app'),
         actions: <Widget>[
           PopupMenuButton<String>(
             onSelected: onSelect,
             itemBuilder: (context) {
-              List<PopupMenuEntry<String>> menuEntries = [
+              final List<PopupMenuEntry<String>> menuEntries = [
                 const PopupMenuItem<String>(
-                  child: Text(mobile),
                   value: mobile,
+                  child: Text(mobile),
                 ),
                 const PopupMenuItem<String>(
-                  child: Text(ssd),
                   value: ssd,
+                  child: Text(ssd),
                 ),
                 const PopupMenuItem<String>(
-                  child: Text(yolo),
                   value: yolo,
+                  child: Text(yolo),
                 ),
                 const PopupMenuItem<String>(
-                  child: Text(deeplab),
                   value: deeplab,
+                  child: Text(deeplab),
                 ),
                 const PopupMenuItem<String>(
-                  child: Text(posenet),
                   value: posenet,
+                  child: Text(posenet),
                 )
               ];
               return menuEntries;

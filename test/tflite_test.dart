@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tflite/tflite.dart';
@@ -209,7 +207,7 @@ void main() {
         1,
         2,
       ]),
-      model: "YOLO",
+      model: 'YOLO',
       threshold: 0.2,
       numResultsPerClass: 10,
       anchors: [
@@ -233,7 +231,7 @@ void main() {
               1,
               2,
             ]),
-            'model': "YOLO",
+            'model': 'YOLO',
             'threshold': 0.2,
             'numResultsPerClass': 10,
             'anchors': [
@@ -265,7 +263,7 @@ void main() {
           2,
         ]),
       ],
-      model: "YOLO",
+      model: 'YOLO',
       imageHeight: 100,
       imageWidth: 200,
       imageMean: 127.5,
@@ -301,7 +299,7 @@ void main() {
                 2,
               ]),
             ],
-            'model': "YOLO",
+            'model': 'YOLO',
             'imageHeight': 100,
             'imageWidth': 200,
             'imageMean': 127.5,
