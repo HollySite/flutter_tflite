@@ -19,11 +19,14 @@ import android.renderscript.ScriptIntrinsicYuvToRGB;
 import android.renderscript.Type;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.plugin.common.PluginRegistry;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
@@ -51,9 +54,10 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Vector;
 
-
-public class TflitePlugin implements MethodCallHandler {
-  private final Registrar mRegistrar;
+public class TflitePlugin implements FlutterPlugin, MethodCallHandler {
+  private MethodChannel channel;
+  private Context applicationContext;
+  private FlutterAssets assets;
   private Interpreter tfLite;
   private boolean tfLiteBusy = false;
   private int inputSize = 0;
@@ -82,13 +86,20 @@ public class TflitePlugin implements MethodCallHandler {
   List<Integer> parentToChildEdges = new ArrayList<>();
   List<Integer> childToParentEdges = new ArrayList<>();
 
-  public static void registerWith(Registrar registrar) {
-    final MethodChannel channel = new MethodChannel(registrar.messenger(), "tflite");
-    channel.setMethodCallHandler(new TflitePlugin(registrar));
+  @Override
+  public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+    channel = new MethodChannel(binding.getBinaryMessenger(), "tflite");
+    channel.setMethodCallHandler(this);
+    applicationContext = binding.getApplicationContext();
+    assets = binding.getFlutterAssets();
   }
 
-  private TflitePlugin(Registrar registrar) {
-    this.mRegistrar = registrar;
+  @Override
+  public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    channel.setMethodCallHandler(null);
+    channel = null;
+    applicationContext = null;
+    assets = null;
   }
 
   @Override
@@ -205,8 +216,8 @@ public class TflitePlugin implements MethodCallHandler {
     String key = null;
     AssetManager assetManager = null;
     if (isAsset) {
-      assetManager = mRegistrar.context().getAssets();
-      key = mRegistrar.lookupKeyForAsset(model);
+      assetManager = applicationContext.getAssets();
+      key = assets.getAssetFilePathByName(model);
       AssetFileDescriptor fileDescriptor = assetManager.openFd(key);
       FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
       FileChannel fileChannel = inputStream.getChannel();
@@ -238,7 +249,7 @@ public class TflitePlugin implements MethodCallHandler {
 
     if (labels.length() > 0) {
       if (isAsset) {
-        key = mRegistrar.lookupKeyForAsset(labels);
+        key = assets.getAssetFilePathByName(labels);
         loadLabels(assetManager, key);
       } else {
         loadLabels(null, labels);
@@ -411,7 +422,7 @@ public class TflitePlugin implements MethodCallHandler {
 
     Bitmap bitmapRaw = Bitmap.createBitmap(imageWidth, imageHeight, Bitmap.Config.ARGB_8888);
     Allocation bmData = renderScriptNV21ToRGBA888(
-        mRegistrar.context(),
+        applicationContext,
         imageWidth,
         imageHeight,
         data);

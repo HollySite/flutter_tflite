@@ -31,6 +31,8 @@ class MyApp extends StatefulWidget {
   _MyAppState createState() => new _MyAppState();
 }
 
+final ImagePicker _imagePicker = ImagePicker();
+
 class _MyAppState extends State<MyApp> {
   File _image;
   List _recognitions;
@@ -40,12 +42,12 @@ class _MyAppState extends State<MyApp> {
   bool _busy = false;
 
   Future predictImagePicker() async {
-    var image = await ImagePicker.pickImage(source: ImageSource.gallery);
+    var image = await _imagePicker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
     setState(() {
       _busy = true;
     });
-    predictImage(image);
+    predictImage(File(image.path));
   }
 
   Future predictImage(File image) async {
